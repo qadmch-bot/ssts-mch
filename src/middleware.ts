@@ -8,7 +8,14 @@ const PUBLIC = ["/", "/login", "/api/webhooks/", "/api/cron/", "/api/notificatio
 export async function middleware(req: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !key) return NextResponse.next(); // demo mode
+  // Demo-only: no Supabase connection, no real patient data.
+  // Never bypass authentication when Supabase is configured.
+  if (!url || !key) {
+    if (req.nextUrl.pathname === "/login") {
+      return NextResponse.redirect(new URL("/dashboard", req.url));
+    }
+    return NextResponse.next();
+  }
   let res = NextResponse.next({ request: req });
   const sb = createServerClient(url, key, {
     cookies: {
