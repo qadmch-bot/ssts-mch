@@ -1,49 +1,40 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
-const DEFAULT_MESSAGE = `🚨 *تنبيه حالة Sepsis جديدة*
-
-مستشفى الولادة والأطفال بحفر الباطن
-إدارة الجودة وسلامة المرضى
-
-نفيدكم بأنه تم تسجيل حالة جديدة مشتبه بها أو مؤكدة للإنتان (Sepsis).
-
-يرجى من الفريق المختص متابعة الحالة والتأكد من تطبيق حزمة الساعة الأولى (Sepsis Hour-1 Bundle) وفق البروتوكول المعتمد.
-
-*هذه رسالة تنبيه من نظام متابعة حالات Sepsis.*`;
-
-export default function WhatsAppAlertButton() {
+export default function WhatsAppManualSettings() {
   const [phone, setPhone] = useState("");
-  const [message, setMessage] = useState(DEFAULT_MESSAGE);
-  const [error, setError] = useState("");
-
-  function openWhatsApp() {
-    const normalized = phone.replace(/[^\d]/g, "").replace(/^00/, "");
-    if (!/^\d{8,15}$/.test(normalized)) {
-      setError("أدخلي رقم المستلم مع مفتاح الدولة، مثل 9665XXXXXXXX.");
-      return;
-    }
-    if (!message.trim()) {
-      setError("اكتبي نص الرسالة أولًا.");
-      return;
-    }
-    setError("");
-    const url = `https://wa.me/${normalized}?text=${encodeURIComponent(message)}`;
-    window.open(url, "_blank", "noopener,noreferrer");
+  const [message, setMessage] = useState("يوجد حالة Sepsis جديدة، يرجى المتابعة.");
+  const [accessKey, setAccessKey] = useState("");
+  const [notice, setNotice] = useState("");
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { try { setPhone(localStorage.getItem("ssts-manual-whatsapp-phone") ?? ""); } catch {} }, []);
+  function savePhone() {
+    if (!/^\+?\d{8,15}$/.test(phone.replace(/\s/g, ""))) { setNotice("أدخلي رقمًا صحيحًا مع مفتاح الدولة"); return; }
+    try { localStorage.setItem("ssts-manual-whatsapp-phone", phone.trim()); setNotice("تم حفظ الرقم على هذا المتصفح"); }
+    catch { setNotice("تعذر حفظ الرقم على هذا المتصفح"); }
   }
-
-  return (
-    <section dir="rtl" style={{ maxWidth: 700, padding: 24, border: "1px solid #dbe3ee", borderRadius: 14, background: "white" }}>
-      <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8 }}>إرسال تنبيه Sepsis عبر واتساب</h2>
-      <p style={{ color: "#475569", marginBottom: 20 }}>اكتبي الرسالة واختاري المستلم، ثم افتحي واتساب لإرسالها يدويًا.</p>
-      <label htmlFor="sepsis-wa-phone" style={{ display: "block", fontWeight: 600, marginBottom: 8 }}>رقم المستلم مع مفتاح الدولة</label>
-      <input id="sepsis-wa-phone" type="tel" inputMode="tel" dir="ltr" placeholder="9665XXXXXXXX" value={phone} onChange={e => setPhone(e.target.value)} style={{ width: "100%", padding: 12, border: "1px solid #cbd5e1", borderRadius: 8, marginBottom: 16 }} />
-      <label htmlFor="sepsis-wa-message" style={{ display: "block", fontWeight: 600, marginBottom: 8 }}>نص التنبيه (قابل للتعديل)</label>
-      <textarea id="sepsis-wa-message" rows={12} value={message} onChange={e => setMessage(e.target.value)} style={{ width: "100%", padding: 12, border: "1px solid #cbd5e1", borderRadius: 8, lineHeight: 1.8 }} />
-      {error && <p role="alert" style={{ color: "#b91c1c", marginTop: 12 }}>{error}</p>}
-      <button type="button" onClick={openWhatsApp} style={{ background: "#047857", color: "white", border: 0, borderRadius: 8, padding: "12px 20px", fontWeight: 700, marginTop: 16, cursor: "pointer" }}>فتح واتساب وإرسال التنبيه</button>
-      <p style={{ fontSize: 12, color: "#64748b", marginTop: 12 }}>لا تدرجي اسم المريض أو رقم ملفه الطبي أو أي معلومات تحدد هويته. لا يرسل هذا الزر أي رسالة تلقائيًا.</p>
-    </section>
-  );
+  async function send() {
+    if (!confirm("هل تريدين إرسال الرسالة الآن عبر Twilio إلى الرقم المحدد؟")) return;
+    setBusy(true); setNotice("جارٍ إرسال الرسالة...");
+    try {
+      const res = await fetch("/api/whatsapp/manual", { method: "POST", headers: { "Content-Type": "application/json", "x-manual-send-key": accessKey }, body: JSON.stringify({ to: phone, message }) });
+      const data = await res.json();
+      setNotice(res.ok ? `قبل Twilio طلب الإرسال. الحالة: ${data.status ?? "queued"}، رقم الرسالة: ${data.sid ?? "غير متاح"}. هذا لا يؤكد التسليم.` : (data.error ?? "فشل الإرسال"));
+    } catch { setNotice("تعذر الاتصال بالخادم"); } finally { setBusy(false); }
+  }
+  const inputStyle = { width: "100%", padding: 12, border: "1px solid #cbd5e1", borderRadius: 8, background: "white" };
+  return <section dir="rtl" style={{ maxWidth: 750, padding: 24, margin: 24, border: "1px solid #dbe3ee", borderRadius: 14, background: "white" }}>
+    <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8 }}>إرسال واتساب يدويًا من Twilio</h1>
+    <p style={{ color: "#475569", marginBottom: 20 }}>اكتبي أي رسالة تجريبية وأرسليها مباشرة من النظام عبر Twilio Sandbox.</p>
+    <label htmlFor="manual-phone" style={{ display: "block", marginBottom: 6, fontWeight: 600 }}>رقم المستلم مع مفتاح الدولة</label>
+    <div style={{ display: "flex", gap: 8, marginBottom: 16 }}><input id="manual-phone" type="tel" dir="ltr" placeholder="+9665XXXXXXXX" value={phone} onChange={e => setPhone(e.target.value)} style={inputStyle}/><button type="button" onClick={savePhone} style={{ whiteSpace: "nowrap", padding: "8px 16px", borderRadius: 8, background: "#0b2a55", color: "white" }}>حفظ الرقم</button></div>
+    <label htmlFor="manual-message" style={{ display: "block", marginBottom: 6, fontWeight: 600 }}>نص الرسالة</label>
+    <textarea id="manual-message" rows={6} maxLength={1200} value={message} onChange={e => setMessage(e.target.value)} style={{ ...inputStyle, lineHeight: 1.8, marginBottom: 16 }}/>
+    <label htmlFor="manual-key" style={{ display: "block", marginBottom: 6, fontWeight: 600 }}>رمز الإرسال الخاص (عند عدم تسجيل الدخول كمسؤول)</label>
+    <input id="manual-key" type="password" autoComplete="off" value={accessKey} onChange={e => setAccessKey(e.target.value)} placeholder="رمز الإرسال المحدد في Vercel" style={{ ...inputStyle, marginBottom: 16 }}/>
+    <button type="button" disabled={busy || !phone.trim() || !message.trim()} onClick={send} style={{ background: "#047857", color: "white", border: 0, borderRadius: 8, padding: "12px 20px", fontWeight: 700, cursor: "pointer", opacity: busy ? 0.6 : 1 }}>{busy ? "جارٍ الإرسال..." : "إرسال عبر Twilio"}</button>
+    {notice && <p role="status" style={{ marginTop: 14, color: notice.includes("فشل") || notice.includes("غير") || notice.includes("تعذر") ? "#b91c1c" : "#0f5132", overflowWrap: "anywhere" }}>{notice}</p>}
+    <p style={{ fontSize: 12, color: "#64748b", marginTop: 16 }}>في Sandbox يجب أن ينضم المستلم للتجربة، وأن تكون نافذة محادثة الـ24 ساعة مفتوحة لإرسال نص حر. لا تدرجي بيانات المرضى. حفظ الرقم محلي على هذا المتصفح فقط.</p>
+  </section>;
 }
