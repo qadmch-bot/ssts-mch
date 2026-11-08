@@ -3,7 +3,7 @@ import { createServerClient } from "@supabase/ssr";
 
 // In production every page requires a signed-in user. Case links in notifications
 // carry no token — opening one always goes through sign-in.
-const PUBLIC = ["/login", "/api/webhooks/", "/api/cron/", "/api/notifications/dispatch"];
+const PUBLIC = ["/", "/login", "/api/webhooks/", "/api/cron/", "/api/notifications/dispatch"];
 
 export async function middleware(req: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -22,7 +22,7 @@ export async function middleware(req: NextRequest) {
   });
   const { data } = await sb.auth.getUser();
   const path = req.nextUrl.pathname;
-  if (!data.user && !PUBLIC.some((p) => path.startsWith(p))) {
+  if (!data.user && !(path === "/" || PUBLIC.filter((p) => p !== "/").some((p) => path.startsWith(p)))) {
     const login = new URL("/login", req.url);
     login.searchParams.set("next", path + req.nextUrl.search);
     return NextResponse.redirect(login);

@@ -87,7 +87,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const sb = supabaseBrowser();
     const { data } = await sb.auth.getUser();
     if (!data.user) {
-      if (!location.pathname.startsWith("/login")) location.href = "/login";
+      if (location.pathname !== "/" && !location.pathname.startsWith("/login")) location.href = "/login";
       return;
     }
     setUserIdState(data.user.id);
@@ -117,6 +117,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setReady(true);
       return;
     }
+    if (location.pathname === "/") { setReady(true); return; }
     reload().finally(() => setReady(true));
   }, [reload]);
 
