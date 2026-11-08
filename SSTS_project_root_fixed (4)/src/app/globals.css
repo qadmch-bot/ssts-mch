@@ -1,0 +1,70 @@
+@import "tailwindcss";
+
+@theme {
+  --color-navy-950: #071a38;
+  --color-navy-900: #0b2a55;
+  --color-navy-800: #12366b;
+  --color-navy-700: #1b4a8a;
+  --color-brand-50: #eef5fe;
+  --color-brand-100: #d9e9fd;
+  --color-brand-500: #2a7de1;
+  --color-brand-600: #1e6fd9;
+  --color-brand-700: #1659b3;
+  --color-teal-50: #e8f8f5;
+  --color-teal-100: #c9efe8;
+  --color-teal-500: #14b39b;
+  --color-teal-600: #0f9a86;
+  --color-teal-700: #0b7d6d;
+  --font-sans: "Segoe UI", "Inter", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --radius-card: 14px;
+}
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body {
+  background: #f5f8fc;
+  color: #0f2340;
+}
+
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+.card {
+  @apply rounded-[14px] border border-slate-200/80 bg-white shadow-[0_1px_2px_rgba(15,35,64,0.04),0_4px_16px_rgba(15,35,64,0.04)];
+}
+
+.tbl {
+  @apply w-full text-sm;
+}
+.tbl thead th {
+  @apply bg-slate-50 px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap;
+}
+.tbl tbody td {
+  @apply border-t border-slate-100 px-3 py-2.5 align-middle;
+}
+.tbl tbody tr:hover td {
+  @apply bg-slate-50/60;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: white;
+  }
+  .print-full {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  .card {
+    box-shadow: none;
+    border-color: #ddd;
+    break-inside: avoid;
+  }
+}
