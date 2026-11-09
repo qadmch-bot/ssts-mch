@@ -1,40 +1,26 @@
 "use client";
-
 import { useEffect, useState } from "react";
-
-export default function WhatsAppManualSettings() {
-  const [phone, setPhone] = useState("");
-  const [message, setMessage] = useState("يوجد حالة Sepsis جديدة، يرجى المتابعة.");
-  const [accessKey, setAccessKey] = useState("");
-  const [notice, setNotice] = useState("");
-  const [busy, setBusy] = useState(false);
-  useEffect(() => { try { setPhone(localStorage.getItem("ssts-manual-whatsapp-phone") ?? ""); } catch {} }, []);
-  function savePhone() {
-    if (!/^\+?\d{8,15}$/.test(phone.replace(/\s/g, ""))) { setNotice("أدخلي رقمًا صحيحًا مع مفتاح الدولة"); return; }
-    try { localStorage.setItem("ssts-manual-whatsapp-phone", phone.trim()); setNotice("تم حفظ الرقم على هذا المتصفح"); }
-    catch { setNotice("تعذر حفظ الرقم على هذا المتصفح"); }
-  }
-  async function send() {
-    if (!confirm("هل تريدين إرسال الرسالة الآن عبر Twilio إلى الرقم المحدد؟")) return;
-    setBusy(true); setNotice("جارٍ إرسال الرسالة...");
-    try {
-      const res = await fetch("/api/whatsapp/manual", { method: "POST", headers: { "Content-Type": "application/json", "x-manual-send-key": accessKey }, body: JSON.stringify({ to: phone, message }) });
-      const data = await res.json();
-      setNotice(res.ok ? `قبل Twilio طلب الإرسال. الحالة: ${data.status ?? "queued"}، رقم الرسالة: ${data.sid ?? "غير متاح"}. هذا لا يؤكد التسليم.` : (data.error ?? "فشل الإرسال"));
-    } catch { setNotice("تعذر الاتصال بالخادم"); } finally { setBusy(false); }
-  }
-  const inputStyle = { width: "100%", padding: 12, border: "1px solid #cbd5e1", borderRadius: 8, background: "white" };
-  return <section dir="rtl" style={{ maxWidth: 750, padding: 24, margin: 24, border: "1px solid #dbe3ee", borderRadius: 14, background: "white" }}>
-    <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8 }}>إرسال واتساب يدويًا من Twilio</h1>
-    <p style={{ color: "#475569", marginBottom: 20 }}>اكتبي أي رسالة تجريبية وأرسليها مباشرة من النظام عبر Twilio Sandbox.</p>
-    <label htmlFor="manual-phone" style={{ display: "block", marginBottom: 6, fontWeight: 600 }}>رقم المستلم مع مفتاح الدولة</label>
-    <div style={{ display: "flex", gap: 8, marginBottom: 16 }}><input id="manual-phone" type="tel" dir="ltr" placeholder="+9665XXXXXXXX" value={phone} onChange={e => setPhone(e.target.value)} style={inputStyle}/><button type="button" onClick={savePhone} style={{ whiteSpace: "nowrap", padding: "8px 16px", borderRadius: 8, background: "#0b2a55", color: "white" }}>حفظ الرقم</button></div>
-    <label htmlFor="manual-message" style={{ display: "block", marginBottom: 6, fontWeight: 600 }}>نص الرسالة</label>
-    <textarea id="manual-message" rows={6} maxLength={1200} value={message} onChange={e => setMessage(e.target.value)} style={{ ...inputStyle, lineHeight: 1.8, marginBottom: 16 }}/>
-    <label htmlFor="manual-key" style={{ display: "block", marginBottom: 6, fontWeight: 600 }}>رمز الإرسال الخاص (عند عدم تسجيل الدخول كمسؤول)</label>
-    <input id="manual-key" type="password" autoComplete="off" value={accessKey} onChange={e => setAccessKey(e.target.value)} placeholder="رمز الإرسال المحدد في Vercel" style={{ ...inputStyle, marginBottom: 16 }}/>
-    <button type="button" disabled={busy || !phone.trim() || !message.trim()} onClick={send} style={{ background: "#047857", color: "white", border: 0, borderRadius: 8, padding: "12px 20px", fontWeight: 700, cursor: "pointer", opacity: busy ? 0.6 : 1 }}>{busy ? "جارٍ الإرسال..." : "إرسال عبر Twilio"}</button>
-    {notice && <p role="status" style={{ marginTop: 14, color: notice.includes("فشل") || notice.includes("غير") || notice.includes("تعذر") ? "#b91c1c" : "#0f5132", overflowWrap: "anywhere" }}>{notice}</p>}
-    <p style={{ fontSize: 12, color: "#64748b", marginTop: 16 }}>في Sandbox يجب أن ينضم المستلم للتجربة، وأن تكون نافذة محادثة الـ24 ساعة مفتوحة لإرسال نص حر. لا تدرجي بيانات المرضى. حفظ الرقم محلي على هذا المتصفح فقط.</p>
-  </section>;
+type Contact = { name: string; phone: string };
+const input: React.CSSProperties = { width:"100%",padding:11,border:"1px solid #cbd5e1",borderRadius:8,background:"white",boxSizing:"border-box" };
+const button: React.CSSProperties = { border:0,borderRadius:8,padding:"10px 15px",background:"#0b2a55",color:"white",cursor:"pointer" };
+function normalize(raw:string) { let n=raw.replace(/[^\d]/g,"").replace(/^00/,""); if(/^05\d{8}$/.test(n)) n="966"+n.slice(1); return /^\d{8,15}$/.test(n) ? "+"+n : ""; }
+export default function WhatsAppSettings() {
+ const [contacts,setContacts]=useState<Contact[]>([]),[name,setName]=useState(""),[phone,setPhone]=useState(""),[message,setMessage]=useState("يوجد تنبيه Sepsis جديد. يرجى متابعة النظام."),[key,setKey]=useState(""),[mode,setMode]=useState<"template"|"freeform">("template"),[busy,setBusy]=useState(false),[notice,setNotice]=useState(""),[sid,setSid]=useState(""),[delivery,setDelivery]=useState("");
+ useEffect(()=>{try {const c=JSON.parse(localStorage.getItem("ssts-whatsapp-contacts-v1")||"[]");if(Array.isArray(c))setContacts(c.filter(x=>typeof x.name==="string"&&typeof x.phone==="string"));const old=localStorage.getItem("ssts-manual-whatsapp-phone");if(old)setPhone(old);}catch{}},[]);
+ function persist(next:Contact[]){setContacts(next);try{localStorage.setItem("ssts-whatsapp-contacts-v1",JSON.stringify(next));}catch{setNotice("تعذر حفظ الأرقام في المتصفح");}}
+ function save(){const n=normalize(phone);if(!n){setNotice("رقم غير صحيح، أدخلي الرقم مع مفتاح الدولة");return;}if(!name.trim()){setNotice("اكتبي اسم المستلم");return;}persist([...contacts.filter(c=>c.phone!==n),{name:name.trim(),phone:n}]);setPhone(n);setNotice("تم حفظ المستلم على هذا المتصفح");}
+ async function send(){const to=normalize(phone);if(!to||!message.trim()){setNotice("أدخلي رقمًا ورسالة صحيحة");return;}if(!confirm(`إرسال إشعار واتساب إلى ${to}؟`))return;setBusy(true);setNotice("جارٍ الإرسال...");setSid("");setDelivery("");try{const r=await fetch("/api/whatsapp/manual",{method:"POST",headers:{"Content-Type":"application/json","x-manual-send-key":key},body:JSON.stringify({to,message,mode})});const d=await r.json();if(!r.ok){setNotice(d.error||"فشل الإرسال");return;}setSid(d.sid||"");setDelivery(d.status||"queued");setNotice(`قبل Twilio الطلب (${d.status||"queued"}). هذا لا يؤكد التسليم.`);}catch{setNotice("تعذر الاتصال بالخادم");}finally{setBusy(false);}}
+ async function check(){if(!sid)return;setBusy(true);try{const r=await fetch(`/api/whatsapp/manual/status?sid=${encodeURIComponent(sid)}`,{headers:{"x-manual-send-key":key},cache:"no-store"});const d=await r.json();if(!r.ok){setNotice(d.error||"فشل التحقق");return;}setDelivery(d.status||"");setNotice(`حالة الرسالة: ${d.status||"غير معروفة"}${d.errorCode?` | رمز الخطأ: ${d.errorCode}`:""}${d.errorMessage?` | ${d.errorMessage}`:""}`);}catch{setNotice("تعذر التحقق من التسليم");}finally{setBusy(false);}}
+ return <section dir="rtl" style={{maxWidth:790,margin:24,padding:24,border:"1px solid #dbe3ee",borderRadius:14,background:"white"}}>
+ <h1 style={{fontSize:22,fontWeight:700}}>إشعارات واتساب — Sepsis</h1><p style={{color:"#475569"}}>إضافة وحفظ المستلمين وإرسال تنبيهات من رقم المستشفى الرسمي عبر Twilio.</p>
+ <label>اسم المستلم</label><input style={{...input,margin:"6px 0 12px"}} value={name} onChange={e=>setName(e.target.value)} placeholder="مثال: منسق الجودة"/>
+ <label>رقم الجوال مع مفتاح الدولة</label><div style={{display:"flex",gap:8,margin:"6px 0 12px"}}><input dir="ltr" type="tel" style={input} value={phone} onChange={e=>setPhone(e.target.value)} placeholder="+9665XXXXXXXX"/><button style={{...button,whiteSpace:"nowrap"}} onClick={save}>حفظ الرقم</button></div>
+ {contacts.length>0&&<div style={{marginBottom:16}}><label>الأرقام المحفوظة ({contacts.length})</label><div style={{display:"grid",gap:7,marginTop:7}}>{contacts.map(c=><div key={c.phone} style={{display:"flex",gap:8,alignItems:"center",border:"1px solid #e2e8f0",borderRadius:8,padding:8}}><button style={{...button,flex:1,textAlign:"right",background:phone===c.phone?"#047857":"#334155"}} onClick={()=>{setPhone(c.phone);setName(c.name);}}>{c.name} — {c.phone}</button><button style={{...button,background:"#b91c1c"}} onClick={()=>persist(contacts.filter(x=>x.phone!==c.phone))}>حذف</button></div>)}</div></div>}
+ <label>طريقة الإرسال</label><div style={{display:"flex",gap:18,flexWrap:"wrap",margin:"9px 0 15px"}}><label><input type="radio" checked={mode==="template"} onChange={()=>setMode("template")}/> قالب معتمد (لإشعارات خارج 24 ساعة)</label><label><input type="radio" checked={mode==="freeform"} onChange={()=>setMode("freeform")}/> نص حر (داخل نافذة 24 ساعة فقط)</label></div>
+ <label>نص التنبيه {mode==="template"?"(يُمرر للمتغير {{1}} في القالب المعتمد)":""}</label><textarea rows={5} maxLength={1200} style={{...input,margin:"7px 0 15px"}} value={message} onChange={e=>setMessage(e.target.value)}/>
+ <label>رمز الإرسال الخاص (إذا لم يكن حساب المسؤول مخولًا)</label><input type="password" autoComplete="off" style={{...input,margin:"7px 0 15px"}} value={key} onChange={e=>setKey(e.target.value)} placeholder="MANUAL_WHATSAPP_SEND_KEY"/>
+ <div style={{display:"flex",gap:10,flexWrap:"wrap"}}><button style={{...button,background:"#047857"}} disabled={busy||!phone||!message.trim()} onClick={send}>{busy?"جارٍ التنفيذ...":"إرسال إشعار واتساب"}</button>{sid&&<button style={button} disabled={busy} onClick={check}>تحقق من التسليم</button>}</div>
+ {notice&&<p role="status" style={{marginTop:15,overflowWrap:"anywhere",color:delivery==="failed"||delivery==="undelivered"?"#b91c1c":"#155e4b"}}>{notice}</p>}{sid&&<p dir="ltr" style={{fontSize:12,overflowWrap:"anywhere"}}>Message SID: {sid}</p>}
+ <p style={{fontSize:12,color:"#64748b",marginTop:20}}>الأرقام محفوظة محليًا في هذا المتصفح فقط، ولا تتزامن بين الأجهزة. يتطلب الإرسال بالقالب متغير Vercel باسم TWILIO_SEPSIS_CONTENT_SID وقالب واتساب معتمد يحتوي على المتغير {"{{1}}"}. لا تضعي معلومات تعريف المرضى أو تفاصيلهم الصحية في الرسائل.</p>
+ </section>;
 }

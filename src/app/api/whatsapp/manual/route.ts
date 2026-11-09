@@ -60,6 +60,7 @@ export async function POST(req: Request) {
     let body: {
       to?: unknown;
       message?: unknown;
+      mode?: unknown;
     };
 
     try {
@@ -92,6 +93,7 @@ export async function POST(req: Request) {
       );
     }
 
+    const mode = body.mode === "freeform" ? "freeform" : "template";
     if (!message || message.length > 1200) {
       return NextResponse.json(
         {
@@ -123,12 +125,18 @@ export async function POST(req: Request) {
       );
     }
 
-    // 4. Send message
-    const form = new URLSearchParams({
-      From: from,
-      To: `whatsapp:+${to}`,
-      Body: message,
-    });
+    // 4. Send message (approved WhatsApp template by default)
+    const form = new URLSearchParams({ From: from, To: `whatsapp:+${to}` });
+    if (mode === "template") {
+      const contentSid = (process.env.TWILIO_SEPSIS_CONTENT_SID ?? "").trim();
+      if (!/^HX[a-fA-F0-9]{32}$/.test(contentSid)) {
+        return NextResponse.json({ error: "أضيفي TWILIO_SEPSIS_CONTENT_SID (معرف قالب واتساب المعتمد) إلى Vercel أولاً." }, { status: 503 });
+      }
+      form.set("ContentSid", contentSid);
+      form.set("ContentVariables", JSON.stringify({ "1": message }));
+    } else {
+      form.set("Body", message);
+    }
 
     const res = await fetch(
       `https://api.twilio.com/2010-04-01/Accounts/${encodeURIComponent(sid)}/Messages.json`,
@@ -168,6 +176,7 @@ export async function POST(req: Request) {
       ok: true,
       sid: result.sid,
       status: result.status ?? "queued",
+      mode,
       message:
         "تم قبول الرسالة من Twilio، ويجري إرسالها.",
     });
