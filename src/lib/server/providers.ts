@@ -56,7 +56,7 @@ export async function sendWhatsApp(m: OutgoingMessage): Promise<SendResult> {
     const detailWithLink = safeCaseUrl ? `${detail}\nرابط عرض الحالة (يتطلب تسجيل الدخول): ${safeCaseUrl}` : detail;
     const from = c.twilioFrom!.startsWith("whatsapp:") ? c.twilioFrom! : `whatsapp:${c.twilioFrom}`;
     const to = m.to.startsWith("whatsapp:") ? m.to : `whatsapp:${m.to}`;
-    const body = new URLSearchParams({ From: from, To: to, ContentSid: c.twilioContentSid!, ContentVariables: JSON.stringify({ "1": detailWithLink }) });
+    const body = new URLSearchParams({ From: from, To: to, ContentSid: c.twilioContentSid!, ContentVariables: JSON.stringify({ "1": detail }) });
     try {
       const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${encodeURIComponent(c.twilioSid!)}/Messages.json`, {
         method: "POST",
