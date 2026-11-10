@@ -1,6 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { supabaseBrowser } from "@/lib/supabase/client";
+import { IS_DEMO } from "@/lib/store";
 import {
   Ambulance,
   ArrowRight,
@@ -46,7 +49,22 @@ const KPI = [
 const DASH_RULES: EventType[] = ["case_registered", "bundle_overdue", "lab_result_available", "inpatient_update", "outcome_death"];
 
 export default function Dashboard() {
-  const { state, can, act } = useStore();
+  const { state, can, act, user, ready } = useStore();
+  const [historical, setHistorical] = useState<{total:number; lactate:number; antibiotic:number; culture:number; all3:number} | null>(null);
+  const [historicalError, setHistoricalError] = useState("");
+  useEffect(() => {
+    if (!ready || IS_DEMO || user.role !== "quality_admin") return;
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabaseBrowser().from("sepsis_excel_import")
+        .select("source_row,lactate_1h,antibiotic_1h,culture_1h,bundle_all3").limit(1000);
+      if (cancelled) return;
+      if (error) { setHistoricalError("Historical Excel data unavailable"); return; }
+      const rows = data ?? [];
+      setHistorical({total:rows.length,lactate:rows.filter(r=>r.lactate_1h===true).length,antibiotic:rows.filter(r=>r.antibiotic_1h===true).length,culture:rows.filter(r=>r.culture_1h===true).length,all3:rows.filter(r=>r.bundle_all3===true).length});
+    })();
+    return () => {cancelled = true;};
+  }, [ready,user.role]);
   const toast = useToast();
   const now = useNow();
   const counts = dashboardCounts(state);
@@ -96,11 +114,22 @@ export default function Dashboard() {
             <Icon className="size-9 shrink-0 stroke-[1.75]" />
             <div className="min-w-0">
               <p className="text-[13px] font-semibold leading-tight text-slate-700">{label}</p>
-              <p className="text-3xl font-bold text-navy-900">{counts[key]}</p>
+              <p className="text-3xl font-bold text-navy-900">{key === "total" && historical ? historical.total + counts.total : counts[key]}</p>
             </div>
           </Link>
         ))}
       </div>
+
+      {user.role === "quality_admin" && !IS_DEMO && (
+        <Card>
+          <CardHeader title="Historical Excel Sepsis Surveillance" subtitle="Imported historical records; distinct from live workflow cases. Yes flags are spreadsheet-reported, not independently validated clinical compliance." action={<Link href="/excel-records" className="text-sm font-semibold text-brand-600">View all historical records →</Link>} />
+          {historicalError ? <p className="p-5 text-red-700">{historicalError}</p> : !historical ? <p className="p-5">Loading historical records…</p> : (
+            <div className="grid grid-cols-2 gap-3 p-5 sm:grid-cols-5">
+              {([["Historical Cases",historical.total],["Lactate 1h · Yes",historical.lactate],["Antibiotic 1h · Yes",historical.antibiotic],["Culture 1h · Yes",historical.culture],["All Three · Yes",historical.all3]] as const).map(([label,value])=><div key={label} className="rounded-xl border border-slate-200 p-3"><p className="text-xs text-slate-600">{label}</p><p className="text-2xl font-bold text-navy-900">{value}</p></div>)}
+            </div>
+          )}
+        </Card>
+      )}
 
       {/* Hour-1 Bundle compliance */}
       <Card>
