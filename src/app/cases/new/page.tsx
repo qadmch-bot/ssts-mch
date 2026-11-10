@@ -30,6 +30,7 @@ export default function NewCasePage() {
     caseDate: riyadhToday(),
     emergencyDepartmentId: defaultEr,
     diagnosisTime: "",
+    arrivalTime: "",
     recognitionTime: "",
     currentDepartmentId: defaultEr,
     physicianName: "",
@@ -52,7 +53,7 @@ export default function NewCasePage() {
   if (!can("case.create"))
     return (
       <div className="mx-auto max-w-3xl">
-        <PageHeader title="New Sepsis Case" icon={<Ambulance />} />
+        <PageHeader title="Register New Sepsis Case" icon={<Ambulance />} />
         <Alert tone="amber" icon={<Lock />} title="Not permitted">
           Only Emergency Department users and Quality Admin can register new cases.
         </Alert>
@@ -107,7 +108,7 @@ export default function NewCasePage() {
               size="lg"
               onClick={() => {
                 setDone(null);
-                setF((x) => ({ ...x, mrn: "", patientName: "", age: "", sex: "", diagnosisTime: "", recognitionTime: "", consultant: "", physicianName: "", patientCategory: "" }));
+                setF((x) => ({ ...x, mrn: "", patientName: "", age: "", sex: "", diagnosisTime: "", arrivalTime: "", recognitionTime: "", consultant: "", physicianName: "", patientCategory: "" }));
               }}
             >
               Register Another
@@ -119,7 +120,7 @@ export default function NewCasePage() {
 
   return (
     <div className="mx-auto max-w-4xl">
-      <PageHeader title="New Sepsis Case" subtitle="Emergency Department registration · Case ID is generated automatically" icon={<Ambulance />} />
+      <PageHeader title="Register New Sepsis Case" subtitle="Emergency Department registration · Case ID is generated automatically" icon={<Ambulance />} />
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -172,15 +173,18 @@ export default function NewCasePage() {
         </Card>
 
         <Card>
-          <CardHeader title="Sepsis Recognition" icon={<Timer />} subtitle="As documented on the SEPSIS HOUR-1 BUNDLE form · times in Riyadh (AST)" />
+          <CardHeader title="Sepsis Case Timing" icon={<Timer />} subtitle="Record arrival and diagnosis times as documented in the clinical record" />
           <div className="grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-3">
             <Field label="Date" required>
               <Input type="date" value={f.caseDate} max={riyadhToday()} onChange={(e) => set("caseDate", e.target.value)} />
             </Field>
+            <Field label="Time of Arrival">
+              <Input type="datetime-local" value={f.arrivalTime} max={nowLocal} onChange={(e) => set("arrivalTime", e.target.value)} />
+            </Field>
             <Field label="Diagnosis Time">
               <Input type="datetime-local" value={f.diagnosisTime} max={nowLocal} onChange={(e) => set("diagnosisTime", e.target.value)} />
             </Field>
-            <Field label="Time of Sepsis Recognition" required hint="Starts the Hour-1 monitoring timer">
+            <Field label="Clinical Sepsis Recognition Time" required hint="Required for clinically accurate Hour-1 calculations; may differ from diagnosis time">
               <Input type="datetime-local" value={f.recognitionTime} max={nowLocal} onChange={(e) => set("recognitionTime", e.target.value)} />
             </Field>
             <Field label="Emergency Department" required>
