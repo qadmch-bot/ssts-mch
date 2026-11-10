@@ -49,7 +49,10 @@ export async function sendWhatsApp(m: OutgoingMessage): Promise<SendResult> {
     // No patient identifiers, MRN, or clinical data in WhatsApp.
     const detail = m.isTest ? "رسالة اختبار لنظام تنبيهات الإنتان" : "تم تسجيل حالة إنتان جديدة. يرجى الدخول إلى نظام المستشفى الآمن للاطلاع.";
     // Include only an authenticated, token-free link to the hospital case page.
-    const safeCaseUrl = m.caseUrl && /^https:\/\/ssts-mch-demo\.vercel\.app\/cases\/view\?id=[0-9a-f-]{36}$/i.test(m.caseUrl) ? m.caseUrl : null;
+    const caseId = m.caseUrl?.match(/\/cases\/view\?id=([0-9a-f-]{36})(?:$|&)/i)?.[1];
+    // Canonical public host avoids an outdated appBaseUrl setting suppressing the link.
+    // The page itself still requires authentication and access authorization.
+    const safeCaseUrl = caseId ? `https://ssts-mch-demo.vercel.app/cases/view?id=${caseId}` : null;
     const detailWithLink = safeCaseUrl ? `${detail}\nرابط عرض الحالة (يتطلب تسجيل الدخول): ${safeCaseUrl}` : detail;
     const from = c.twilioFrom!.startsWith("whatsapp:") ? c.twilioFrom! : `whatsapp:${c.twilioFrom}`;
     const to = m.to.startsWith("whatsapp:") ? m.to : `whatsapp:${m.to}`;
