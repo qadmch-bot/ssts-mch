@@ -23,46 +23,59 @@ export interface OutgoingMessage {
 // ------------------------------------------------------------ WhatsApp Business Platform (Cloud API)
 
 export function whatsappConfig() {
+  // Prefer the user's approved Twilio WhatsApp template; retain Meta as fallback.
+  const twilioSid = process.env.TWILIO_ACCOUNT_SID;
+  const twilioToken = process.env.TWILIO_AUTH_TOKEN;
+  const twilioFrom = process.env.TWILIO_WHATSAPP_FROM ?? process.env.TWILIO_PHONE_NUMBER;
+  const twilioContentSid = process.env.TWILIO_SEPSIS_CONTENT_SID;
+  if (twilioSid && twilioToken && twilioFrom && twilioContentSid) {
+    return { configured: true, provider: "twilio" as const, twilioSid, twilioToken, twilioFrom, twilioContentSid, template: twilioContentSid, lang: "ar", version: "Twilio" };
+  }
   const token = process.env.WHATSAPP_ACCESS_TOKEN;
   const phoneId = process.env.WHATSAPP_PHONE_NUMBER_ID;
   const template = process.env.WHATSAPP_TEMPLATE_NAME;
   const lang = process.env.WHATSAPP_TEMPLATE_LANGUAGE ?? "en";
   const version = process.env.WHATSAPP_API_VERSION ?? "v21.0";
-  return { configured: !!(token && phoneId && template), token, phoneId, template, lang, version };
+  return { configured: !!(token && phoneId && template), provider: "meta" as const, token, phoneId, template, lang, version };
 }
 
-/**
- * Sends an approved template message. Business-initiated WhatsApp messages require a
- * Meta-approved template; the expected template has 4 body variables:
- *   {{1}} title · {{2}} Case ID · {{3}} Department · {{4}} Status / action
- * The template text and the secure link are configured in WhatsApp Manager.
- */
+/** Sends a preapproved business-initiated template, not an unapproved free-text message. */
 export async function sendWhatsApp(m: OutgoingMessage): Promise<SendResult> {
   const c = whatsappConfig();
-  if (!c.configured) return { ok: false, error: "WhatsApp provider not configured", retryable: false };
+  if (!c.configured) return { ok: false, error: "WhatsApp provider not configured (Twilio credentials/template or Meta Cloud API missing)", retryable: false };
+  if (c.provider === "twilio") {
+    // Approved sepsis_notification_alert has exactly ONE {{1}} variable.
+    // No patient identifiers, MRN, or clinical data in WhatsApp.
+    const detail = m.isTest ? "رسالة اختبار لنظام تنبيهات الإنتان" : "تم تسجيل حالة إنتان جديدة. يرجى الدخول إلى نظام المستشفى الآمن للاطلاع.";
+    const from = c.twilioFrom!.startsWith("whatsapp:") ? c.twilioFrom! : `whatsapp:${c.twilioFrom}`;
+    const to = m.to.startsWith("whatsapp:") ? m.to : `whatsapp:${m.to}`;
+    const body = new URLSearchParams({ From: from, To: to, ContentSid: c.twilioContentSid!, ContentVariables: JSON.stringify({ "1": detail }) });
+    try {
+      const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${encodeURIComponent(c.twilioSid!)}/Messages.json`, {
+        method: "POST",
+        headers: { Authorization: `Basic ${Buffer.from(`${c.twilioSid}:${c.twilioToken}`).toString("base64")}`, "Content-Type": "application/x-www-form-urlencoded" },
+        body: body.toString(),
+        signal: AbortSignal.timeout(15000),
+      });
+      const result = (await res.json().catch(() => ({}))) as { sid?: string; message?: string; code?: number };
+      if (res.ok && result.sid) return { ok: true, providerMessageId: result.sid };
+      return { ok: false, error: `Twilio ${res.status}${result.code ? ` (${result.code})` : ""}: ${result.message ?? "unknown error"}`, retryable: res.status === 429 || res.status >= 500 };
+    } catch (e) {
+      return { ok: false, error: `Twilio request failed: ${(e as Error).message}`, retryable: true };
+    }
+  }
   const params = m.isTest ? ["[TEST] " + m.templateParams[0], ...m.templateParams.slice(1)] : m.templateParams;
   try {
     const res = await fetch(`https://graph.facebook.com/${c.version}/${c.phoneId}/messages`, {
       method: "POST",
       headers: { Authorization: `Bearer ${c.token}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        messaging_product: "whatsapp",
-        to: m.to.replace(/^\+/, ""),
-        type: "template",
-        template: {
-          name: c.template,
-          language: { code: c.lang },
-          components: [{ type: "body", parameters: params.map((text) => ({ type: "text", text: text.slice(0, 200) })) }],
-        },
-      }),
+      body: JSON.stringify({ messaging_product: "whatsapp", to: m.to.replace(/^\+/, ""), type: "template", template: { name: c.template, language: { code: c.lang }, components: [{ type: "body", parameters: params.map((text) => ({ type: "text", text: text.slice(0, 200) })) }] } }),
       signal: AbortSignal.timeout(15000),
     });
-    const body = (await res.json().catch(() => ({}))) as { messages?: { id: string }[]; error?: { message?: string; code?: number } };
-    if (res.ok && body.messages?.[0]?.id) return { ok: true, providerMessageId: body.messages[0].id };
-    const code = body.error?.code;
-    // Auth/permission/template errors will not fix themselves; rate limits and 5xx will.
-    const retryable = res.status >= 500 || res.status === 429 || code === 4 || code === 80007 || code === 130429;
-    return { ok: false, error: `WhatsApp ${res.status}${code ? ` (code ${code})` : ""}: ${body.error?.message ?? "unknown error"}`, retryable };
+    const result = (await res.json().catch(() => ({}))) as { messages?: { id: string }[]; error?: { message?: string; code?: number } };
+    if (res.ok && result.messages?.[0]?.id) return { ok: true, providerMessageId: result.messages[0].id };
+    const code = result.error?.code;
+    return { ok: false, error: `WhatsApp ${res.status}${code ? ` (code ${code})` : ""}: ${result.error?.message ?? "unknown error"}`, retryable: res.status >= 500 || res.status === 429 || code === 4 || code === 80007 || code === 130429 };
   } catch (e) {
     return { ok: false, error: `WhatsApp request failed: ${(e as Error).message}`, retryable: true };
   }

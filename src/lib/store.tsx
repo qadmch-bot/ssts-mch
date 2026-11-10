@@ -87,7 +87,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const sb = supabaseBrowser();
     const { data } = await sb.auth.getUser();
     if (!data.user) {
-      if (location.pathname !== "/" && !location.pathname.startsWith("/login")) location.href = "/login";
+      if (!location.pathname.startsWith("/login")) location.href = "/login";
       return;
     }
     setUserIdState(data.user.id);
@@ -117,7 +117,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setReady(true);
       return;
     }
-    if (location.pathname === "/") { setReady(true); return; }
     reload().finally(() => setReady(true));
   }, [reload]);
 
@@ -154,15 +153,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       (async () => {
         const { supabaseBrowser } = await import("./supabase/client");
         const sb = supabaseBrowser();
+        let saved = true;
         for (const c of calls) {
           const { error } = await sb.rpc(c.fn, c.args);
           if (error) {
+            saved = false;
             reportSyncError(error.message);
             break;
           }
         }
-        // send queued alerts now (the scheduler also runs every minute)
-        await fetch("/api/notifications/dispatch", { method: "POST" }).catch(() => undefined);
+        // Never dispatch if saving the case failed. The server-side cron is a fallback.
+        if (saved) {
+          try {
+            const response = await fetch("/api/notifications/dispatch", { method: "POST" });
+            if (!response.ok) reportSyncError(`Notification dispatch failed (HTTP ${response.status}); queued alerts will be retried by the scheduler.`);
+          } catch {
+            reportSyncError("Notification server unreachable; queued alerts will be retried by the scheduler.");
+          }
+        }
         await reload();
       })();
       return r;

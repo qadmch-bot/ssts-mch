@@ -17,8 +17,8 @@ export async function GET() {
     whatsapp: {
       configured: wa.configured,
       detail: wa.configured
-        ? `Cloud API ${wa.version} · template “${wa.template}” (${wa.lang}) · webhook ${process.env.WHATSAPP_APP_SECRET ? "signature check on" : "APP SECRET MISSING"}`
-        : "WHATSAPP_ACCESS_TOKEN / WHATSAPP_PHONE_NUMBER_ID / WHATSAPP_TEMPLATE_NAME missing",
+        ? wa.provider === "twilio" ? `Twilio · approved template configured` : `Cloud API ${wa.version} · template “${wa.template}” (${wa.lang})`
+        : "Twilio: TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN / TWILIO_WHATSAPP_FROM / TWILIO_SEPSIS_CONTENT_SID; or Meta credentials missing",
     },
     email: { configured: em.configured, detail: em.detail },
     note: "Configured means credentials are present. Use 'Send test message' to confirm real delivery.",

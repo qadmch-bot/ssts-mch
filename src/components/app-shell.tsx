@@ -30,7 +30,7 @@ import { fmtDate, nowIso } from "@/lib/time";
 import { cn } from "./ui";
 
 export const NAV = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/cases/new", label: "New Sepsis Case", icon: PlusSquare },
   { href: "/cases", label: "Sepsis Cases", icon: ClipboardList },
   { href: "/bundle", label: "Hour-1 Bundle", icon: Timer },
@@ -53,7 +53,6 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const [menu, setMenu] = useState(false);
   const unread = state.inApp.filter((n) => !n.readBy.includes(user.id)).length;
-  if (path === "/") return <>{children}</>;
   if (path === "/login") return <main className="min-h-screen bg-[#f5f8fc] px-4 py-10">{children}</main>;
 
   const sidebar = (
