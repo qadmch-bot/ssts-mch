@@ -8,19 +8,8 @@ export function supabaseBrowser() {
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
 
   if (!url || !key) {
-    throw new Error(
-      "Supabase configuration is missing. Check Vercel environment variables."
-    );
+    throw new Error("Supabase configuration is missing.");
   }
 
-  const expectedUrl =
-    "https://ehpqviewbumetxwkeeg.supabase.co";
-
-  if (url.replace(/\/+$/, "") !== expectedUrl) {
-    throw new Error(
-      "Incorrect Supabase URL in Vercel: " + url
-    );
-  }
-
-  return createBrowserClient(expectedUrl, key);
+  return createBrowserClient(url.replace(/\/+$/, ""), key);
 }
