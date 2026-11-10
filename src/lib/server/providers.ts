@@ -17,6 +17,7 @@ export interface OutgoingMessage {
   subject: string;
   text: string;
   templateParams: string[];
+  caseUrl?: string | null;
   isTest: boolean;
 }
 
@@ -47,9 +48,12 @@ export async function sendWhatsApp(m: OutgoingMessage): Promise<SendResult> {
     // Approved sepsis_notification_alert has exactly ONE {{1}} variable.
     // No patient identifiers, MRN, or clinical data in WhatsApp.
     const detail = m.isTest ? "رسالة اختبار لنظام تنبيهات الإنتان" : "تم تسجيل حالة إنتان جديدة. يرجى الدخول إلى نظام المستشفى الآمن للاطلاع.";
+    // Include only an authenticated, token-free link to the hospital case page.
+    const safeCaseUrl = m.caseUrl && /^https:\/\/ssts-mch-demo\.vercel\.app\/cases\/view\?id=[0-9a-f-]{36}$/i.test(m.caseUrl) ? m.caseUrl : null;
+    const detailWithLink = safeCaseUrl ? `${detail}\nرابط عرض الحالة (يتطلب تسجيل الدخول): ${safeCaseUrl}` : detail;
     const from = c.twilioFrom!.startsWith("whatsapp:") ? c.twilioFrom! : `whatsapp:${c.twilioFrom}`;
     const to = m.to.startsWith("whatsapp:") ? m.to : `whatsapp:${m.to}`;
-    const body = new URLSearchParams({ From: from, To: to, ContentSid: c.twilioContentSid!, ContentVariables: JSON.stringify({ "1": detail }) });
+    const body = new URLSearchParams({ From: from, To: to, ContentSid: c.twilioContentSid!, ContentVariables: JSON.stringify({ "1": detailWithLink }) });
     try {
       const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${encodeURIComponent(c.twilioSid!)}/Messages.json`, {
         method: "POST",
