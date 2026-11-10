@@ -220,18 +220,8 @@ function Inner() {
 
       {/* Completion */}
       <Card>
-        <CardHeader icon={<CheckCircle2 />} title="Bundle Completion" />
+        <CardHeader icon={<CheckCircle2 />} title="Bundle Documentation" subtitle="Completion timestamp is not collected on this form. Timing compliance remains pending until a hospital-approved method is implemented." />
         <div className="grid gap-4 p-5 sm:grid-cols-3">
-          <Field label="Bundle Completion Time" hint="Recorded date and time">
-            <Input
-              type="datetime-local"
-              disabled={!editable}
-              value={toRiyadhInput(draft.completionTime)}
-              max={toRiyadhInput(nowIso())}
-              min={toRiyadhInput(c.recognitionTime)}
-              onChange={(e) => set("completionTime", fromRiyadhInput(e.target.value))}
-            />
-          </Field>
           <Field label="Physician Name">
             <Input disabled={!editable} value={draft.physicianName} onChange={(e) => set("physicianName", e.target.value)} />
           </Field>
