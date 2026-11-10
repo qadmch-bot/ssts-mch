@@ -8,7 +8,7 @@ export function supabaseBrowser() {
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
 
   if (!url || !key) {
-    throw new Error("Supabase configuration is missing.");
+    throw new Error("Supabase configuration is missing");
   }
 
   return createBrowserClient(url.replace(/\/+$/, ""), key);
