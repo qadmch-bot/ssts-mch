@@ -221,24 +221,14 @@ function Inner() {
       {/* Completion */}
       <Card>
         <CardHeader icon={<CheckCircle2 />} title="Bundle Completion" />
-        <div className="grid gap-4 p-5 sm:grid-cols-3">
-          <Field label="Bundle Completion Time" hint="Riyadh time">
-            <Input
-              type="datetime-local"
-              disabled={!editable}
-              value={toRiyadhInput(draft.completionTime)}
-              max={toRiyadhInput(nowIso())}
-              min={toRiyadhInput(c.recognitionTime)}
-              onChange={(e) => set("completionTime", fromRiyadhInput(e.target.value))}
-            />
-          </Field>
+        <div className="grid gap-4 p-5 sm:grid-cols-2">
           <Field label="Physician Name">
             <Input disabled={!editable} value={draft.physicianName} onChange={(e) => set("physicianName", e.target.value)} />
           </Field>
-          <Field label="Date and Time" hint="When the form was completed">
+          <Field label="Date and Time" hint="When documentation was completed (not clinical bundle completion)">
             <Input type="datetime-local" disabled={!editable} value={toRiyadhInput(draft.documentedAt)} max={toRiyadhInput(nowIso())} onChange={(e) => set("documentedAt", fromRiyadhInput(e.target.value))} />
           </Field>
-          <div className="sm:col-span-3">
+          <div className="sm:col-span-2">
             <p className="mb-2 font-semibold text-navy-900">{BUNDLE_COMPLETION_QUESTION}</p>
             <YesNoToggle value={draft.clinicianAllWithin1h} onChange={(v) => set("clinicianAllWithin1h", v)} disabled={!editable} />
           </div>
