@@ -107,7 +107,7 @@ function Inner() {
             <p className="font-semibold text-navy-900">{fmtDateTime(c.diagnosisTime)}</p>
           </div>
           <div>
-            <p className="text-xs font-semibold text-slate-500">Time of Sepsis Recognition</p>
+            <p className="text-xs font-semibold text-slate-500">Recorded Recognition Time</p>
             <p className="font-semibold text-navy-900">{fmtDateTime(c.recognitionTime)}</p>
           </div>
           <div className="col-span-2">
@@ -222,7 +222,7 @@ function Inner() {
       <Card>
         <CardHeader icon={<CheckCircle2 />} title="Bundle Completion" />
         <div className="grid gap-4 p-5 sm:grid-cols-3">
-          <Field label="Bundle Completion Time" hint="Riyadh time">
+          <Field label="Bundle Completion Time" hint="Recorded date and time">
             <Input
               type="datetime-local"
               disabled={!editable}
