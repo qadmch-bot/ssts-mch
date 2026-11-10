@@ -33,6 +33,7 @@ export const NAV = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/cases/new", label: "New Sepsis Case", icon: PlusSquare },
   { href: "/cases", label: "Sepsis Cases", icon: ClipboardList },
+  { href: "/excel-records", label: "Excel Sepsis Records", icon: ClipboardList },
   { href: "/bundle", label: "Hour-1 Bundle", icon: Timer },
   { href: "/laboratory", label: "Laboratory Results", icon: FlaskConical },
   { href: "/inpatient", label: "Inpatient Updates", icon: BedDouble },
@@ -58,7 +59,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const sidebar = (
     <nav className="flex h-full flex-col bg-gradient-to-b from-navy-900 to-navy-950 text-white">
       <div className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
-        {NAV.map(({ href, label, icon: Icon }) => {
+        {NAV.filter((item) => item.href !== "/excel-records" || user.role === "quality_admin").map(({ href, label, icon: Icon }) => {
           const active = isActive(path, href);
           return (
             <Link
