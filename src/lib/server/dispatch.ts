@@ -29,7 +29,7 @@ export async function dispatchDue(admin: SupabaseClient, limit = 25) {
     .select("id, event_type, case_id, case_no, is_test, department_id, departments(name)")
     .in("id", eventIds);
   const { data: setting } = await admin.from("system_settings").select("value").eq("key", "appBaseUrl").maybeSingle();
-  const baseUrl = (setting?.value as string) ?? process.env.APP_BASE_URL ?? "";
+  const baseUrl = ((setting?.value as string | null)?.trim() || process.env.APP_BASE_URL?.trim() || "https://ssts-mch-demo.vercel.app").replace(/\/$/, "");
   const byId = new Map((events ?? []).map((e) => [e.id, e]));
 
   const stats = { processed: rows.length, sent: 0, failed: 0, retrying: 0, notSent: 0 };
@@ -45,7 +45,7 @@ export async function dispatchDue(admin: SupabaseClient, limit = 25) {
         isTest: e.is_test,
       };
       const msg = buildMessage(ctx);
-      const out = { to: d.address, subject: msg.subject, text: msg.text, templateParams: whatsappTemplateParams(ctx), isTest: e.is_test };
+      const out = { to: d.address, subject: msg.subject, text: msg.text, templateParams: whatsappTemplateParams(ctx), caseUrl: ctx.caseUrl, isTest: e.is_test };
       const r = d.channel === "whatsapp" ? await sendWhatsApp(out) : await sendEmail(out);
       let patch: Record<string, unknown>;
       if (r.ok) {
