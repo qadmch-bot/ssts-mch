@@ -172,7 +172,7 @@ export default function NewCasePage() {
         </Card>
 
         <Card>
-          <CardHeader title="Sepsis Recognition" icon={<Timer />} subtitle="As documented on the SEPSIS HOUR-1 BUNDLE form · times in Riyadh (AST)" />
+          <CardHeader title="Sepsis Recognition" icon={<Timer />} subtitle="Document the patient arrival time and clinical assessment details" />
           <div className="grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-3">
             <Field label="Date" required>
               <Input type="date" value={f.caseDate} max={riyadhToday()} onChange={(e) => set("caseDate", e.target.value)} />
@@ -180,7 +180,7 @@ export default function NewCasePage() {
             <Field label="Diagnosis Time">
               <Input type="datetime-local" value={f.diagnosisTime} max={nowLocal} onChange={(e) => set("diagnosisTime", e.target.value)} />
             </Field>
-            <Field label="Time of Sepsis Recognition" required hint="Starts the Hour-1 monitoring timer">
+            <Field label="Arrival Time" required hint="Patient arrival time; not automatically the clinical sepsis recognition time">
               <Input type="datetime-local" value={f.recognitionTime} max={nowLocal} onChange={(e) => set("recognitionTime", e.target.value)} />
             </Field>
             <Field label="Emergency Department" required>
@@ -206,7 +206,7 @@ export default function NewCasePage() {
             </Field>
           </div>
           {f.diagnosisTime && f.recognitionTime && f.diagnosisTime !== f.recognitionTime && (
-            <p className="px-5 pb-4 text-xs text-slate-500">Diagnosis Time and Time of Sepsis Recognition are stored separately, exactly as entered.</p>
+            <p className="px-5 pb-4 text-xs text-slate-500">Diagnosis Time and Arrival Time are recorded separately. The clinical recognition timestamp requires a separate approved definition.</p>
           )}
         </Card>
 
