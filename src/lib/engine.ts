@@ -301,6 +301,26 @@ export function registerCase(s: State, ctx: Ctx, input: NewCaseInput): Result<Se
   return { ok: true, state: next, value: c, warning: dup ? `Registered despite open case ${dup.caseNo} with the same MRN` : undefined };
 }
 
+/** Delete an erroneous/test case; retain audit and sent-message history. */
+export function deleteErroneousCase(s: State, ctx: Ctx, caseId: string, reason: string): Result<null> {
+  if (ctx.user.role !== "quality_admin") return fail(s, "Only Quality Admin can delete a case");
+  const c = s.cases.find((x) => x.id === caseId);
+  if (!c) return fail(s, "Case not found");
+  if (reason.trim().length < 10) return fail(s, "Deletion reason must contain at least 10 characters");
+  let next: State = {
+    ...s,
+    cases: s.cases.filter((x) => x.id !== caseId),
+    identifiers: s.identifiers.filter((x) => x.caseId !== caseId),
+    bundles: s.bundles.filter((x) => x.caseId !== caseId),
+    labs: s.labs.filter((x) => x.caseId !== caseId),
+    updates: s.updates.filter((x) => x.caseId !== caseId),
+    events: s.events.map((e) => e.caseId === caseId ? { ...e, caseId: null } : e),
+    inApp: s.inApp.filter((n) => n.caseId !== caseId),
+  };
+  next = audit(next, ctx, "case.delete_erroneous", "case", c.id, c.id, `Deleted erroneous/test case ${c.caseNo}: ${reason.trim()}`);
+  return { ok: true, state: next, value: null };
+}
+
 export function updateCaseTimes(
   s: State,
   ctx: Ctx,
