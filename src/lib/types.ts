@@ -52,7 +52,8 @@ export interface SepsisCase {
   emergencyDepartmentId: string;
   currentDepartmentId: string;
   diagnosisTime: string | null; // UTC ISO
-  recognitionTime: string | null; // UTC ISO — Time of Sepsis Recognition
+  recognitionTime: string | null; // UTC ISO — clinical recognition, never inferred from arrival
+  arrivalTime?: string | null; // UTC ISO — patient arrival, distinct from recognition
   physicianName: string;
   status: CaseStatus;
   currentStatus: string; // human status label, e.g. "In Emergency", "Admitted"
