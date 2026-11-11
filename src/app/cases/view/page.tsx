@@ -1,15 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
-import { Ambulance, ArrowLeft, BedDouble, Check, ClipboardList, FlaskConical, Flag, History, Pencil, Send, Timer, RotateCcw } from "lucide-react";
+import { Ambulance, ArrowLeft, BedDouble, Check, ClipboardList, FlaskConical, Flag, History, Pencil, Send, Timer, RotateCcw, Trash2 } from "lucide-react";
 import { Alert, Badge, Button, Card, CardHeader, Dialog, Empty, Field, Input, Select, Textarea, cn } from "@/components/ui";
 import { BundleBadge, Identifiers, LabBadge, OutcomeDialog, StatusBadge, caseBundle } from "@/components/case-bits";
 import { DeliveryBadge } from "@/components/delivery";
 import { useToast } from "@/components/toast";
 import { useNow, useStore } from "@/lib/store";
-import { correctOutcome, deptName, updateCaseTimes } from "@/lib/engine";
+import { correctOutcome, deleteErroneousCase, deptName, updateCaseTimes } from "@/lib/engine";
 import { BUNDLE_MEASURES, EVENT_LABELS, LAB_STATUS_LABELS, OUTCOME_LABELS } from "@/lib/constants";
 import { COMPLIANCE_LABELS, TIMING_LABELS } from "@/lib/bundle";
 import { fmtDate, fmtDateTime, fromRiyadhInput, nowIso, toRiyadhInput } from "@/lib/time";
@@ -17,12 +17,16 @@ import type { FinalOutcomeType } from "@/lib/types";
 
 function Inner() {
   const id = useSearchParams().get("id");
+  const router = useRouter();
   const { state, can, act } = useStore();
   const now = useNow();
   const toast = useToast();
   const [outcomeOpen, setOutcomeOpen] = useState(false);
   const [correctOpen, setCorrectOpen] = useState(false);
   const [timesOpen, setTimesOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  const [deleteReason, setDeleteReason] = useState("");
   const c = state.cases.find((x) => x.id === id);
   if (!c)
     return (
@@ -62,6 +66,9 @@ function Inner() {
         <BundleBadge s={state} c={c} now={now} />
         <LabBadge s={state} caseId={c.id} />
         <div className="no-print ml-auto flex flex-wrap gap-2">
+          {can("settings.manage") && (
+            <Button variant="danger" onClick={() => setDeleteOpen(true)}><Trash2 /> Delete Case</Button>
+          )}
           {can("bundle.edit") && (
             <Link href={`/bundle/form?id=${c.id}`}>
               <Button variant="teal">
@@ -95,6 +102,34 @@ function Inner() {
           )}
         </div>
       </div>
+
+      <Dialog
+        open={deleteOpen}
+        onClose={() => setDeleteOpen(false)}
+        title={`Delete ${c.caseNo}?`}
+        icon={<Trash2 />}
+        size="sm"
+        footer={<>
+          <Button variant="outline" onClick={() => setDeleteOpen(false)}>Cancel</Button>
+          <Button variant="danger" disabled={deleteConfirmation.trim() !== c.caseNo || deleteReason.trim().length < 10} onClick={() => {
+            const r = act((state, ctx) => deleteErroneousCase(state, ctx, c.id, deleteReason), () => ({ fn: "delete_erroneous_case", args: { p_case: c.id, p_case_no: c.caseNo, p_reason: deleteReason.trim() } }));
+            if (!r.ok) return toast("error", "Could not delete case", r.error);
+            toast("success", "Case removal requested", "The server will verify and record the deletion. Check for synchronization errors.");
+            setDeleteOpen(false);
+            router.push("/cases");
+          }}>Delete Case</Button>
+        </>}
+      >
+        <div className="space-y-4">
+          <Alert tone="amber">Quality Admin only. This permanently removes the case and its clinical records. The deletion reason and notification delivery history are retained for audit. This cannot be undone.</Alert>
+          <Field label={`Type the case number exactly: ${c.caseNo}`} required>
+            <Input value={deleteConfirmation} onChange={(e) => setDeleteConfirmation(e.target.value)} autoComplete="off" />
+          </Field>
+          <Field label="Reason for deletion (minimum 10 characters)" required>
+            <Textarea value={deleteReason} onChange={(e) => setDeleteReason(e.target.value)} placeholder="e.g. Test case entered by mistake" />
+          </Field>
+        </div>
+      </Dialog>
 
       {/* Timeline */}
       <Card className="px-4 py-5">
