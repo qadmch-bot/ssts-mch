@@ -79,7 +79,8 @@ function Recipients({ channel }: { channel: Channel }) {
   const [edit, setEdit] = useState<RecipientInput | null>(null);
   const [history, setHistory] = useState<string | null>(null);
   const [del, setDel] = useState<string | null>(null);
-  const list = state.recipients.filter((r) => r.channel === channel).sort((a, b) => Number(b.active) - Number(a.active) || a.name.localeCompare(b.name));
+  const [showInactive, setShowInactive] = useState(false);
+  const list = state.recipients.filter((r) => r.channel === channel && (showInactive || r.active)).sort((a, b) => Number(b.active) - Number(a.active) || a.name.localeCompare(b.name));
   const wa = channel === "whatsapp";
   const depts = state.departments.filter((d) => d.active);
   const dn = (ids: string[]) => (ids.length ? ids.map((i) => state.departments.find((d) => d.id === i)?.name ?? "?").join(", ") : "All departments");
@@ -119,6 +120,12 @@ function Recipients({ channel }: { channel: Channel }) {
           )
         }
       />
+      <div className="flex justify-end px-4 py-2">
+        <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-600">
+          <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} />
+          Show inactive / archived recipients
+        </label>
+      </div>
       <div className="overflow-x-auto">
         <table className="tbl">
           <thead>
@@ -292,7 +299,7 @@ function Recipients({ channel }: { channel: Channel }) {
           </>
         }
       >
-        <p className="text-sm text-slate-600">Recipients with delivery history are deactivated (kept for the audit trail) instead of being permanently deleted.</p>
+        <p className="text-sm text-slate-600">Recipients with delivery history are archived for audit purposes and hidden from the default list. Use “Show inactive / archived recipients” to review or reactivate them.</p>
       </Dialog>
     </Card>
   );
