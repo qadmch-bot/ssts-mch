@@ -583,8 +583,14 @@ export function saveRecipient(s: State, ctx: Ctx, input: RecipientInput): Result
   }
   if (!input.eventTypes.length) return fail(s, "Select at least one notification type");
   const dup = s.recipients.find((r) => r.channel === input.channel && r.id !== input.id && normalizeAddress(r.channel, r.address) === normalizeAddress(input.channel, address));
-  if (dup) return fail(s, `This ${input.channel === "whatsapp" ? "number" : "email"} is already registered for ${dup.name}`);
-  const prev = input.id ? s.recipients.find((r) => r.id === input.id) : undefined;
+  // A recipient removed from the list may still exist in the database because past
+  // notification deliveries must retain their foreign key. Reuse that same ID.
+  const latestRecipientAction = dup
+    ? [...s.audit].filter((a) => a.entity === "recipient" && a.entityId === dup.id).sort((a, b) => b.at.localeCompare(a.at))[0]?.action
+    : undefined;
+  const restoreArchived = !input.id && dup && !dup.active && latestRecipientAction === "recipient.deactivate";
+  if (dup && !restoreArchived) return fail(s, `This ${input.channel === "whatsapp" ? "number" : "email"} is already registered for ${dup.name}`);
+  const prev = restoreArchived ? dup : input.id ? s.recipients.find((r) => r.id === input.id) : undefined;
   const r: Recipient = {
     id: prev?.id ?? uid(ctx),
     channel: input.channel,
@@ -597,7 +603,7 @@ export function saveRecipient(s: State, ctx: Ctx, input: RecipientInput): Result
     updatedAt: ctx.now,
   };
   let next: State = { ...s, recipients: prev ? s.recipients.map((x) => (x.id === r.id ? r : x)) : [...s.recipients, r] };
-  next = audit(next, ctx, prev ? "recipient.update" : "recipient.create", "recipient", r.id, null, `${r.channel} recipient ${r.name}${r.active ? "" : " (inactive)"}`);
+  next = audit(next, ctx, restoreArchived ? "recipient.restore" : prev ? "recipient.update" : "recipient.create", "recipient", r.id, null, `${r.channel} recipient ${r.name}${r.active ? "" : " (inactive)"}`);
   return { ok: true, state: next, value: r };
 }
 
