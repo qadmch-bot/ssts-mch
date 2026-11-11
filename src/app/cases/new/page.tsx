@@ -30,7 +30,7 @@ export default function NewCasePage() {
     caseDate: riyadhToday(),
     emergencyDepartmentId: defaultEr,
     diagnosisTime: "",
-    recognitionTime: "",
+    arrivalTime: "",
     currentDepartmentId: defaultEr,
     physicianName: "",
   });
@@ -44,7 +44,8 @@ export default function NewCasePage() {
       ...f,
       age: f.age === "" ? null : Number(f.age),
       diagnosisTime: fromRiyadhInput(f.diagnosisTime),
-      recognitionTime: fromRiyadhInput(f.recognitionTime),
+      arrivalTime: fromRiyadhInput(f.arrivalTime),
+      recognitionTime: null,
     }),
     [f],
   );
@@ -107,7 +108,7 @@ export default function NewCasePage() {
               size="lg"
               onClick={() => {
                 setDone(null);
-                setF((x) => ({ ...x, mrn: "", patientName: "", age: "", sex: "", diagnosisTime: "", recognitionTime: "", consultant: "", physicianName: "", patientCategory: "" }));
+                setF((x) => ({ ...x, mrn: "", patientName: "", age: "", sex: "", diagnosisTime: "", arrivalTime: "", consultant: "", physicianName: "", patientCategory: "" }));
               }}
             >
               Register Another
@@ -172,7 +173,7 @@ export default function NewCasePage() {
         </Card>
 
         <Card>
-          <CardHeader title="Sepsis Recognition" icon={<Timer />} subtitle="Document the patient arrival time and clinical assessment details" />
+          <CardHeader title="Arrival and Assessment" icon={<Timer />} subtitle="Document the patient arrival time and clinical assessment details" />
           <div className="grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-3">
             <Field label="Date" required>
               <Input type="date" value={f.caseDate} max={riyadhToday()} onChange={(e) => set("caseDate", e.target.value)} />
@@ -181,7 +182,7 @@ export default function NewCasePage() {
               <Input type="datetime-local" value={f.diagnosisTime} max={nowLocal} onChange={(e) => set("diagnosisTime", e.target.value)} />
             </Field>
             <Field label="Arrival Time" required hint="Patient arrival time; not automatically the clinical sepsis recognition time">
-              <Input type="datetime-local" value={f.recognitionTime} max={nowLocal} onChange={(e) => set("recognitionTime", e.target.value)} />
+              <Input type="datetime-local" value={f.arrivalTime} max={nowLocal} onChange={(e) => set("arrivalTime", e.target.value)} />
             </Field>
             <Field label="Emergency Department" required>
               <Select value={f.emergencyDepartmentId} onChange={(e) => set("emergencyDepartmentId", e.target.value)}>
@@ -205,8 +206,8 @@ export default function NewCasePage() {
               <Input value={f.physicianName} onChange={(e) => set("physicianName", e.target.value)} />
             </Field>
           </div>
-          {f.diagnosisTime && f.recognitionTime && f.diagnosisTime !== f.recognitionTime && (
-            <p className="px-5 pb-4 text-xs text-slate-500">Diagnosis Time and Arrival Time are recorded separately. The clinical recognition timestamp requires a separate approved definition.</p>
+          {f.diagnosisTime && f.arrivalTime && f.diagnosisTime !== f.arrivalTime && (
+            <p className="px-5 pb-4 text-xs text-slate-500">Diagnosis Time and Arrival Time are recorded separately. Hour-1 compliance remains pending until the clinical recognition timestamp is separately documented.</p>
           )}
         </Card>
 
