@@ -228,6 +228,7 @@ export interface NewCaseInput {
   emergencyDepartmentId: string;
   diagnosisTime: string | null;
   recognitionTime: string | null;
+  arrivalTime: string | null;
   currentDepartmentId: string;
   physicianName: string;
   confirmDuplicate?: boolean;
@@ -245,7 +246,8 @@ export function validateNewCase(input: NewCaseInput, now: string): string[] {
   if (!input.emergencyDepartmentId) errs.push("Emergency Department is required");
   if (!input.currentDepartmentId) errs.push("Current Department is required");
   if (!input.physicianName.trim()) errs.push("Physician Name is required");
-  if (!input.recognitionTime) errs.push("Time of Sepsis Recognition is required (starts the Hour-1 timer)");
+  if (!input.arrivalTime) errs.push("Arrival Time is required");
+  if (input.arrivalTime && new Date(input.arrivalTime) > new Date(now)) errs.push("Arrival Time cannot be in the future");
   if (input.recognitionTime && new Date(input.recognitionTime) > new Date(now)) errs.push("Time of Sepsis Recognition cannot be in the future");
   if (input.diagnosisTime && new Date(input.diagnosisTime) > new Date(now)) errs.push("Diagnosis Time cannot be in the future");
   return errs;
@@ -278,6 +280,7 @@ export function registerCase(s: State, ctx: Ctx, input: NewCaseInput): Result<Se
     currentDepartmentId: input.currentDepartmentId,
     diagnosisTime: input.diagnosisTime,
     recognitionTime: input.recognitionTime,
+    arrivalTime: input.arrivalTime,
     physicianName: input.physicianName.trim(),
     status: "active",
     currentStatus: "In Emergency",
