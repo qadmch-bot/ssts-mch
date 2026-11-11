@@ -80,7 +80,16 @@ function Recipients({ channel }: { channel: Channel }) {
   const [history, setHistory] = useState<string | null>(null);
   const [del, setDel] = useState<string | null>(null);
   const [showInactive, setShowInactive] = useState(false);
-  const list = state.recipients.filter((r) => r.channel === channel && (showInactive || r.active)).sort((a, b) => Number(b.active) - Number(a.active) || a.name.localeCompare(b.name));
+  // A delete with delivery history is archived by the backend, not physically removed.
+  // Use the latest recipient audit action to distinguish deletion from a Status toggle.
+  const archivedIds = new Set<string>();
+  const seenRecipientActions = new Set<string>();
+  for (const entry of [...state.audit].sort((a, b) => b.at.localeCompare(a.at))) {
+    if (entry.entity !== "recipient" || seenRecipientActions.has(entry.entityId)) continue;
+    seenRecipientActions.add(entry.entityId);
+    if (entry.action === "recipient.deactivate") archivedIds.add(entry.entityId);
+  }
+  const list = state.recipients.filter((r) => r.channel === channel && !archivedIds.has(r.id) && (showInactive || r.active)).sort((a, b) => Number(b.active) - Number(a.active) || a.name.localeCompare(b.name));
   const wa = channel === "whatsapp";
   const depts = state.departments.filter((d) => d.active);
   const dn = (ids: string[]) => (ids.length ? ids.map((i) => state.departments.find((d) => d.id === i)?.name ?? "?").join(", ") : "All departments");
@@ -123,7 +132,7 @@ function Recipients({ channel }: { channel: Channel }) {
       <div className="flex justify-end px-4 py-2">
         <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-600">
           <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} />
-          Show inactive / archived recipients
+          Show inactive recipients
         </label>
       </div>
       <div className="overflow-x-auto">
@@ -289,7 +298,7 @@ function Recipients({ channel }: { channel: Channel }) {
               variant="danger"
               onClick={() => {
                 const r = act((s, ctx) => deleteRecipient(s, ctx, del!), () => ({ fn: "delete_recipient", args: { p_id: del } }));
-                if (r.ok) toast("success", r.warning ? "Recipient deactivated" : "Recipient deleted", r.warning);
+                if (r.ok) toast("success", r.warning ? "Recipient removed" : "Recipient deleted", r.warning);
                 else toast("error", "Not removed", r.error);
                 setDel(null);
               }}
