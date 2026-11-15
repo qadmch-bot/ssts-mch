@@ -9,7 +9,7 @@ import { HOSPITAL } from "@/lib/constants";
 import { supabaseBrowser } from "@/lib/supabase/client";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
+  const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -25,10 +25,16 @@ export default function LoginPage() {
     setError(null);
 
     try {
-      const cleanEmail = email.trim().toLowerCase();
+      const username = loginId.trim().toUpperCase();
+      const aliases = ["OBSER", "PER", "LAB", "IPC"];
+      // Supabase Auth uses email internally. Staff enter only their approved username.
+      // These aliases must be provisioned as confirmed Auth users by an administrator.
+      const cleanEmail = aliases.includes(username)
+        ? `${username.toLowerCase()}@ssts-mch.invalid`
+        : loginId.trim().toLowerCase();
 
-      if (!cleanEmail || !password) {
-        setError("يرجى إدخال البريد الإلكتروني وكلمة المرور.");
+      if (!loginId.trim() || !password) {
+        setError("يرجى إدخال اسم المستخدم أو بريد الجودة وكلمة المرور.");
         return;
       }
 
@@ -51,7 +57,7 @@ export default function LoginPage() {
             .includes("invalid login credentials")
         ) {
           setError(
-            "البريد الإلكتروني أو كلمة المرور غير صحيحة. " +
+            "اسم المستخدم أو كلمة المرور غير صحيحة. " +
             "تفاصيل Supabase: " +
             authError.message
           );
@@ -139,13 +145,14 @@ export default function LoginPage() {
             </Alert>
           )}
 
-          <Field label="Email" required>
+          <Field label="Username / Quality Admin email" required>
             <Input
-              type="email"
+              type="text"
               autoComplete="username"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              value={loginId}
+              onChange={(e) => setLoginId(e.target.value)}
               disabled={busy}
+              placeholder="OBSER, PER, LAB, IPC or Quality email"
               required
             />
           </Field>
