@@ -62,6 +62,7 @@ export async function loadState(sb: SupabaseClient, opts: { auditLimit?: number;
       currentDepartmentId: c.current_department_id,
       diagnosisTime: c.diagnosis_time,
       recognitionTime: c.recognition_time,
+      arrivalTime: c.arrival_time ?? null,
       physicianName: c.physician_name,
       status: c.status,
       currentStatus: c.current_status,
