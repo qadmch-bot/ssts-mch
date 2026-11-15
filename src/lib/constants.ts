@@ -137,6 +137,7 @@ export const ROLE_LABELS: Record<Role, string> = {
   laboratory: "Laboratory",
   inpatient: "Inpatient Department",
   leadership: "Hospital Leadership",
+  ipc: "Infection Prevention & Control",
 };
 
 export type Permission =
@@ -172,8 +173,9 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   laboratory: ["lab.edit"],
   inpatient: ["case.viewIdentifiers", "inpatient.edit", "outcome.record"],
   leadership: ["reports.export"],
+  ipc: [],
 };
 
 export function can(role: Role, p: Permission) {
-  return ROLE_PERMISSIONS[role].includes(p);
+  return (ROLE_PERMISSIONS[role] ?? []).includes(p);
 }
