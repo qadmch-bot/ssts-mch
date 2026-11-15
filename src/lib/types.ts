@@ -1,7 +1,7 @@
 // Core domain types for the Sepsis Surveillance & Tracking System (SSTS).
 // All timestamps are ISO-8601 strings in UTC. Display uses Asia/Riyadh.
 
-export type Role = "quality_admin" | "emergency" | "laboratory" | "inpatient" | "leadership";
+export type Role = "quality_admin" | "emergency" | "laboratory" | "inpatient" | "leadership" | "ipc";
 
 export type DepartmentKind = "emergency" | "inpatient" | "laboratory" | "other";
 
